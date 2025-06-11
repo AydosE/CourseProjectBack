@@ -1,11 +1,18 @@
 const express = require("express");
 const sequelize = require("./config/db");
+const cors = require("cors");
 const User = require("./models/User");
+const templatesRouter = require("./routes/template");
 require("dotenv").config();
-console.log("DATABASE_URL:", process.env.DATABASE_URL);
 
 const app = express();
+// app.use(cors());
 app.use(express.json());
+
+app.get("/test", (req, res) => {
+  res.send("👋 Привет! Сервер работает!");
+});
+app.use("/api/templates", templatesRouter);
 
 sequelize
   .sync()
