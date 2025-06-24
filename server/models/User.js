@@ -17,7 +17,10 @@ const User = sequelize.define(
     preferred_lang: { type: DataTypes.STRING, defaultValue: "en" },
     theme: { type: DataTypes.ENUM("light", "dark"), defaultValue: "light" },
   },
-  { timestamps: true }
+  {
+    freezeTableName: true,
+    timestamps: true,
+  }
 );
 
 module.exports = User;
