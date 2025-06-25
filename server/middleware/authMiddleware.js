@@ -14,7 +14,10 @@ auth.optional = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // можно: req.user = await User.findByPk(decoded.userId)
+    req.user = {
+      id: decoded.userId,
+      role: decoded.role,
+    };
   } catch (err) {
     // молча продолжаем без пользователя
   }
@@ -31,7 +34,15 @@ auth.required = async (req, res, next) => {
     const user = await User.findByPk(decoded.userId);
     if (!user)
       return res.status(401).json({ message: "Пользователь не найден" });
-    req.user = user;
+    req.user = {
+      id: decoded.userId,
+      role: decoded.role,
+      username: user.username,
+      email: user.email,
+      preferred_lang: user.preferred_lang,
+      theme: user.theme,
+    };
+
     next();
   } catch (err) {
     res.status(401).json({ message: "Невалидный токен" });

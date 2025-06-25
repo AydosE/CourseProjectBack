@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
+const Template = require("./Template");
 
 const User = sequelize.define(
   "User",
@@ -22,5 +23,4 @@ const User = sequelize.define(
     timestamps: true,
   }
 );
-
 module.exports = User;

@@ -30,8 +30,4 @@ const Answer = sequelize.define(
   }
 );
 
-// 🔗 Ассоциации (если нужно)
-// Answer.belongsTo(Form, { foreignKey: "formId" });
-// Answer.belongsTo(Question, { foreignKey: "questionId" });
-
 module.exports = Answer;

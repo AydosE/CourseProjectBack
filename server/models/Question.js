@@ -35,7 +35,4 @@ const Question = sequelize.define(
   }
 );
 
-Question.belongsTo(Template, { foreignKey: "templateId" });
-Template.hasMany(Question, { foreignKey: "templateId", onDelete: "CASCADE" });
-
 module.exports = Question;

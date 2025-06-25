@@ -1,12 +1,16 @@
 const express = require("express");
 const sequelize = require("./config/db");
+const db = require("./models/index");
 const cors = require("cors");
 const User = require("./models/User");
 const templatesRouter = require("./routes/templates");
 const formsRouter = require("./routes/forms");
 const answersRouter = require("./routes/answer");
 const authRouter = require("./routes/auth");
+const tagRoutes = require("./routes/tags");
+const userRoutes = require("./routes/users");
 
+// Теперь можно: db.Template.findAll({ include: [db.User] })
 require("dotenv").config();
 
 const app = express();
@@ -27,6 +31,8 @@ app.use("/api/forms", formsRouter);
 app.use("/api/answers", answersRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/forms", formsRouter);
+app.use("/api/tags", tagRoutes);
+app.use("/api/users", userRoutes);
 sequelize
   .sync({ alter: true })
   // .sync()

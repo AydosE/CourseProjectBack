@@ -21,11 +21,4 @@ const Form = sequelize.define(
   }
 );
 
-Form.belongsTo(User, { foreignKey: "userId" });
-Form.belongsTo(Template, { foreignKey: "templateId" });
-
-// 💥 Ассоциации с Answer
-Form.hasMany(Answer, { foreignKey: "formId", onDelete: "CASCADE" });
-Answer.belongsTo(Form, { foreignKey: "formId" });
-
 module.exports = Form;

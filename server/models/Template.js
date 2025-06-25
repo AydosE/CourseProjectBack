@@ -1,6 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 const User = require("./User");
+const Form = require("./Form");
 
 const Template = sequelize.define(
   "Template",
@@ -22,6 +23,4 @@ const Template = sequelize.define(
     timestamps: true,
   }
 );
-
-Template.belongsTo(User, { foreignKey: "userId" });
 module.exports = Template;
