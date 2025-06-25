@@ -5,27 +5,31 @@ const Template = require("../models/Template");
 const Question = require("../models/Question");
 const User = require("../models/User");
 
-router.post("/", auth, async (req, res) => {
+// 🔐 Создать шаблон (только авторизованные)
+router.post("/", auth.required, async (req, res) => {
   const { title, description, category, imageUrl, tags, questions } = req.body;
 
   if (!title || !Array.isArray(questions)) {
     return res
       .status(400)
-      .json({ message: "Нужно указать title и массив вопросов" });
+      .json({ message: "Нужно указать title и массив questions" });
   }
 
-  // Валидация по количеству типов (до 4 каждого)
   const typeCount = { text: 0, textarea: 0, number: 0, checkbox: 0 };
   for (let q of questions) {
-    if (!q.type || !q.text)
+    if (!q.type || !q.text) {
       return res
         .status(400)
         .json({ message: "Каждый вопрос должен иметь текст и тип" });
+    }
     if (typeCount[q.type] !== undefined) typeCount[q.type]++;
   }
   for (let t in typeCount) {
-    if (typeCount[t] > 4)
-      return res.status(400).json({ message: `Максимум 4 вопроса типа ${t}` });
+    if (typeCount[t] > 4) {
+      return res
+        .status(400)
+        .json({ message: `Максимум 4 вопроса типа "${t}"` });
+    }
   }
 
   try {
@@ -38,20 +42,22 @@ router.post("/", auth, async (req, res) => {
       userId: req.user.id,
     });
 
-    const enriched = questions.map((q, i) => ({
+    const enrichedQuestions = questions.map((q, i) => ({
       ...q,
       order: i,
       templateId: template.id,
     }));
-    await Question.bulkCreate(enriched);
+
+    await Question.bulkCreate(enrichedQuestions);
 
     res.status(201).json({ templateId: template.id });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Ошибка создания шаблона" });
+    console.error("Ошибка при создании шаблона:", err);
+    res.status(500).json({ message: "Ошибка на сервере при создании шаблона" });
   }
 });
-// Получить все шаблоны
+
+// 🔓 Получить все шаблоны
 router.get("/", async (req, res) => {
   try {
     const templates = await Template.findAll({
@@ -66,11 +72,12 @@ router.get("/", async (req, res) => {
     });
     res.json(templates);
   } catch (err) {
-    res.status(500).json({ message: "Ошибка получения шаблонов" });
+    console.error("Ошибка при получении шаблонов:", err);
+    res.status(500).json({ message: "Ошибка при получении шаблонов" });
   }
 });
 
-// Получить один шаблон по id
+// 🔓 Получить один шаблон по ID
 router.get("/:id", async (req, res) => {
   try {
     const template = await Template.findByPk(req.params.id, {
@@ -79,9 +86,9 @@ router.get("/:id", async (req, res) => {
         {
           model: Question,
           attributes: ["id", "text", "type", "options", "order"],
-          order: [["order", "ASC"]],
         },
       ],
+      order: [[Question, "order", "ASC"]],
     });
 
     if (!template) {
@@ -90,7 +97,8 @@ router.get("/:id", async (req, res) => {
 
     res.json(template);
   } catch (err) {
-    res.status(500).json({ message: "Ошибка получения шаблона" });
+    console.error("Ошибка при получении шаблона:", err);
+    res.status(500).json({ message: "Ошибка при получении шаблона" });
   }
 });
 
