@@ -155,5 +155,75 @@ router.put("/:id", auth.required, checkOwner(Template), async (req, res) => {
     res.status(500).json({ message: "Ошибка на сервере" });
   }
 });
+router.delete("/:id", auth.required, checkOwner(Template), async (req, res) => {
+  try {
+    await Template.destroy({ where: { id: req.params.id } });
+    res.json({ message: "Шаблон удалён" });
+  } catch (err) {
+    console.error("Ошибка удаления:", err);
+    res.status(500).json({ message: "Ошибка на сервере" });
+  }
+});
+
+router.patch(
+  "/:id/questions",
+  auth.required,
+  checkOwner(Template),
+  async (req, res) => {
+    try {
+      const { questions } = req.body;
+
+      if (!Array.isArray(questions))
+        return res
+          .status(400)
+          .json({ message: "Некорректный формат вопросов" });
+
+      const templateId = req.params.id;
+
+      // Получаем существующие вопросы
+      const existing = await Question.findAll({ where: { templateId } });
+      const existingIds = existing.map((q) => q.id);
+
+      // ID из новых данных
+      const incomingIds = questions.filter((q) => q.id).map((q) => q.id);
+
+      // ❌ Вопросы на удаление
+      const toDelete = existingIds.filter((id) => !incomingIds.includes(id));
+      if (toDelete.length > 0) {
+        await Question.destroy({ where: { id: toDelete } });
+      }
+
+      // 🔁 Обновим или создадим
+      for (const [i, q] of questions.entries()) {
+        if (q.id && existingIds.includes(q.id)) {
+          // UPDATE
+          await Question.update(
+            {
+              text: q.text,
+              type: q.type,
+              options: q.options,
+              order: i,
+            },
+            { where: { id: q.id } }
+          );
+        } else {
+          // CREATE
+          await Question.create({
+            text: q.text,
+            type: q.type,
+            options: q.options,
+            order: i,
+            templateId,
+          });
+        }
+      }
+
+      res.json({ message: "Вопросы обновлены" });
+    } catch (err) {
+      console.error("Ошибка обновления вопросов:", err);
+      res.status(500).json({ message: "Ошибка на сервере" });
+    }
+  }
+);
 
 module.exports = router;

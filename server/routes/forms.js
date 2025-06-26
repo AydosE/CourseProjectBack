@@ -48,7 +48,7 @@ router.post("/", auth.required, async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", auth.required, async (req, res) => {
   try {
     const form = await Form.findByPk(req.params.id, {
       include: [
@@ -69,6 +69,12 @@ router.get("/:id", async (req, res) => {
     });
 
     if (!form) return res.status(404).json({ message: "Форма не найдена" });
+    const isOwner = form.userId === req.user.id;
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Нет доступа к форме" });
+    }
 
     res.json(form);
   } catch (err) {

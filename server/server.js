@@ -9,15 +9,15 @@ const answersRouter = require("./routes/answer");
 const authRouter = require("./routes/auth");
 const tagRoutes = require("./routes/tags");
 const userRoutes = require("./routes/users");
+const adminRoutes = require("./routes/admin");
 
-// Теперь можно: db.Template.findAll({ include: [db.User] })
 require("dotenv").config();
 
 const app = express();
 app.use(
   cors({
-    origin: "http://localhost:5173", // фронтенд
-    credentials: true, // если используешь cookie
+    origin: "http://localhost:5173",
+    credentials: true,
   })
 );
 
@@ -33,6 +33,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/forms", formsRouter);
 app.use("/api/tags", tagRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/admin", adminRoutes);
 sequelize
   .sync({ alter: true })
   // .sync()
