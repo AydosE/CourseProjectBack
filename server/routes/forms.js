@@ -5,6 +5,7 @@ const Answer = require("../models/Answer");
 const Question = require("../models/Question");
 const Template = require("../models/Template");
 const auth = require("../middleware/authMiddleware");
+const canViewForm = require("../middleware/canViewForm");
 
 // Можно использовать как с авторизацией, так и без
 router.post("/", auth.required, async (req, res) => {
@@ -39,7 +40,9 @@ router.post("/", auth.required, async (req, res) => {
       questionId: a.questionId,
       value: a.value,
     }));
-    await Answer.bulkCreate(formattedAnswers);
+    const createdAnswers = await Answer.bulkCreate(formattedAnswers, {
+      returning: true,
+    });
 
     res.status(201).json({ message: "Ответ отправлен", formId: form.id });
   } catch (err) {
@@ -54,6 +57,7 @@ router.get("/:id", auth.required, async (req, res) => {
       include: [
         {
           model: Answer,
+          include: [{ model: Question, attributes: ["text", "type"] }],
           attributes: ["id", "questionId", "value"],
         },
         {
@@ -80,6 +84,25 @@ router.get("/:id", auth.required, async (req, res) => {
   } catch (err) {
     console.error("Ошибка получения формы", err);
     res.status(500).json({ message: "Ошибка на сервере" });
+  }
+});
+
+// Удаление формы (только владелец или админ)
+router.delete("/:id", auth.required, async (req, res) => {
+  try {
+    const form = await Form.findByPk(req.params.id);
+    if (!form) return res.status(404).json({ message: "Форма не найдена" });
+
+    // Проверка на владельца или админа
+    if (form.userId !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Нет доступа" });
+    }
+
+    await form.destroy();
+    res.json({ message: "Ответ удалён" });
+  } catch (err) {
+    console.error("Ошибка удаления формы:", err);
+    res.status(500).json({ message: "Ошибка сервера" });
   }
 });
 

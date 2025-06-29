@@ -137,26 +137,55 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// 🔐 Обновить шаблон (только автор или админ)
 router.put("/:id", auth.required, checkOwner(Template), async (req, res) => {
   try {
-    const { title, description, category, tags, imageUrl } = req.body;
-    const template = await Template.findByPk(req.params.id);
-    template.title = title ?? template.title;
-    template.description = description ?? template.description;
-    template.category = category ?? template.category;
-    template.tags = tags ?? template.tags;
-    template.imageUrl = imageUrl ?? template.imageUrl;
+    const { title, questions = [] } = req.body;
 
-    await template.save();
+    // 1. Найдём шаблон
+    const template = await Template.findByPk(req.params.id, {
+      include: [Question],
+    });
+
+    if (!template) return res.status(404).json({ message: "Шаблон не найден" });
+
+    // 2. Обновим поля шаблона
+    await template.update({ title });
+
+    // 3. Обновим список вопросов
+    const existingIds = template.Questions.map((q) => q.id);
+
+    for (const q of questions) {
+      if (q.id && existingIds.includes(q.id)) {
+        // обновляем существующий
+        await Question.update(
+          { text: q.text, type: q.type },
+          { where: { id: q.id } }
+        );
+      } else {
+        // создаём новый
+        await Question.create({
+          text: q.text,
+          type: q.type,
+          templateId: template.id,
+        });
+      }
+    }
+
+    // 4. Удалим удалённые вопросы
+    const newIds = questions.filter((q) => q.id).map((q) => q.id);
+    const toDelete = existingIds.filter((id) => !newIds.includes(id));
+
+    await Question.destroy({ where: { id: toDelete } });
+
     res.json({ message: "Шаблон обновлён" });
   } catch (err) {
     console.error("Ошибка при обновлении шаблона:", err);
-    res.status(500).json({ message: "Ошибка на сервере" });
+    res.status(500).json({ message: "Ошибка при обновлении" });
   }
 });
 router.delete("/:id", auth.required, checkOwner(Template), async (req, res) => {
   try {
+    // await Form.destroy({ where: { templateId: req.params.id } }); // Удаляем формы, связанные с этим шаблоном
     await Template.destroy({ where: { id: req.params.id } });
     res.json({ message: "Шаблон удалён" });
   } catch (err) {

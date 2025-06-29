@@ -12,7 +12,7 @@ const Form = sequelize.define(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    templateId: { type: DataTypes.UUID, allowNull: false },
+    templateId: { type: DataTypes.UUID, allowNull: true },
     userId: { type: DataTypes.UUID, allowNull: true },
     createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },

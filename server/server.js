@@ -35,8 +35,8 @@ app.use("/api/tags", tagRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 sequelize
-  .sync({ alter: true })
-  // .sync()
+  // .sync({ force: true })
+  .sync()
   .then(() => console.log("✅ Таблицы созданы и база готова!"))
   .catch((err) => console.error("❌ Ошибка синхронизации:", err));
 

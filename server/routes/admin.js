@@ -11,6 +11,19 @@ function isAdmin(req, res, next) {
   next();
 }
 
+router.get("/users", auth.required, isAdmin, async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ["id", "username", "email", "role", "is_blocked"],
+      order: [["createdAt", "DESC"]],
+    });
+    res.json(users);
+  } catch (err) {
+    console.error("Ошибка получения пользователей:", err);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+});
+
 // 🔒 Блокировка / разблокировка пользователя
 router.put("/:id/block", auth.required, isAdmin, async (req, res) => {
   try {

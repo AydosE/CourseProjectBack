@@ -26,7 +26,7 @@ const Question = sequelize.define(
     },
     templateId: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true,
     },
   },
   {

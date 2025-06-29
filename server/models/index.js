@@ -9,11 +9,15 @@ User.hasMany(Template, { foreignKey: "userId", onDelete: "CASCADE" });
 Template.belongsTo(User, { foreignKey: "userId" });
 
 // Шаблон → вопросы и формы
-Template.hasMany(Question, { foreignKey: "templateId", onDelete: "CASCADE" });
-Question.belongsTo(Template, { foreignKey: "templateId" });
+Template.hasMany(Question, { foreignKey: "templateId", onDelete: "SET NULL" });
+Question.belongsTo(Template, {
+  foreignKey: "templateId",
+  onDelete: "SET NULL",
+});
 
-Template.hasMany(Form, { foreignKey: "templateId", onDelete: "CASCADE" });
-Form.belongsTo(Template, { foreignKey: "templateId" });
+// Template.hasMany(Form, { foreignKey: "templateId", onDelete: "CASCADE" });
+Template.hasMany(Form, { foreignKey: "templateId", onDelete: "SET NULL" });
+Form.belongsTo(Template, { foreignKey: "templateId", onDelete: "SET NULL" });
 
 // Форма → ответы
 Form.hasMany(Answer, { foreignKey: "formId", onDelete: "CASCADE" });
