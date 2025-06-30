@@ -7,7 +7,6 @@ const Template = require("../models/Template");
 const auth = require("../middleware/authMiddleware");
 const canViewForm = require("../middleware/canViewForm");
 
-// Можно использовать как с авторизацией, так и без
 router.post("/", auth.required, async (req, res) => {
   try {
     const { templateId, answers } = req.body;
@@ -18,11 +17,9 @@ router.post("/", auth.required, async (req, res) => {
       return res.status(400).json({ message: "Неверные данные формы" });
     }
 
-    // Получаем все вопросы шаблона
     const questions = await Question.findAll({ where: { templateId } });
     const questionIds = questions.map((q) => q.id);
 
-    // Валидация: каждый ответ должен относиться к этому шаблону
     for (const ans of answers) {
       if (!ans.questionId || !questionIds.includes(ans.questionId)) {
         return res
@@ -87,7 +84,6 @@ router.get("/:id", auth.required, async (req, res) => {
   }
 });
 
-// Удаление формы (только владелец или админ)
 router.delete("/:id", auth.required, async (req, res) => {
   try {
     const form = await Form.findByPk(req.params.id);

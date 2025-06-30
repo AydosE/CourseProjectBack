@@ -6,49 +6,103 @@ const Template = require("../models/Template");
 const Form = require("../models/Form");
 const Answer = require("../models/Answer");
 const Question = require("../models/Question");
-const TemplateModel = require("../models/Template"); // для Form → Template
 const User = require("../models/User");
+const checkOwnership = require("../middleware/checkOwnership");
 
 // 🔐 Мои шаблоны
-router.get("/me/templates", auth.required, async (req, res) => {
-  try {
-    const templates = await Template.findAll({
-      where: { userId: req.user.id },
-      order: [["createdAt", "DESC"]],
-    });
-    res.json(templates);
-  } catch (err) {
-    console.error("Ошибка получения шаблонов пользователя:", err);
-    res.status(500).json({ message: "Ошибка на сервере" });
-  }
-});
+// router.get("/me/templates", auth.required, async (req, res) => {
+//   try {
+//     const templates = await Template.findAll({
+//       where: { userId: req.user.id },
+//       order: [["createdAt", "DESC"]],
+//     });
+//     res.json(templates);
+//   } catch (err) {
+//     console.error("Ошибка получения шаблонов пользователя:", err);
+//     res.status(500).json({ message: "Ошибка на сервере" });
+//   }
+// });
 
-// 🔐 Мои формы (и ответы)
-router.get("/me/forms", auth.required, async (req, res) => {
-  try {
-    const forms = await Form.findAll({
-      where: { userId: req.user.id },
-      include: [
-        {
-          model: Answer,
-          attributes: ["id", "questionId", "value"],
-          include: [{ model: Question, attributes: ["text", "type"] }],
-        },
-        {
-          model: TemplateModel,
-          attributes: ["id", "title"],
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
-    res.json(forms);
-  } catch (err) {
-    console.error("Ошибка получения форм пользователя:", err);
-    res.status(500).json({ message: "Ошибка на сервере" });
-  }
-});
+// // 🔐 Мои формы (и ответы)
+// router.get("/me/forms", auth.required, async (req, res) => {
+//   try {
+//     const forms = await Form.findAll({
+//       where: { userId: req.user.id },
+//       include: [
+//         {
+//           model: Answer,
+//           attributes: ["id", "questionId", "value"],
+//           include: [{ model: Question, attributes: ["text", "type"] }],
+//         },
+//         {
+//           model: TemplateModel,
+//           attributes: ["id", "title"],
+//         },
+//       ],
+//       order: [["createdAt", "DESC"]],
+//     });
+//     res.json(forms);
+//   } catch (err) {
+//     console.error("Ошибка получения форм пользователя:", err);
+//     res.status(500).json({ message: "Ошибка на сервере" });
+//   }
+// });
 
-router.get("/:id", auth.required, async (req, res) => {
+router.get(
+  "/:id/templates",
+  auth.required,
+  checkOwnership(Template),
+  async (req, res) => {
+    const userId = req.params.id === "me" ? req.user.id : req.params.id;
+    console.log(req.user.isAdmin);
+    console.log("in route now for templates");
+    try {
+      const templates = await Template.findAll({
+        where: { userId },
+        order: [["createdAt", "DESC"]],
+      });
+      res.json(templates);
+    } catch (error) {
+      console.error("Ошибка при получении шаблонов:", error);
+      res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+);
+
+router.get(
+  "/:id/forms",
+  auth.required,
+  checkOwnership(Form),
+  async (req, res) => {
+    console.log("in route now for forms");
+    try {
+      const userId = req.params.id === "me" ? req.user.id : req.params.id;
+
+      const forms = await Form.findAll({
+        where: { userId },
+        include: [
+          {
+            model: Answer,
+            attributes: ["id", "questionId", "value"],
+            include: [{ model: Question, attributes: ["text", "type"] }],
+          },
+          {
+            model: Template,
+            attributes: ["id", "title"],
+          },
+        ],
+        order: [["createdAt", "DESC"]],
+      });
+
+      res.json(forms);
+    } catch (err) {
+      console.error("Ошибка получения форм:", err);
+      res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+);
+router.get("/:id/datas", auth.required, async (req, res) => {
+  console.log("in route now for user details");
   try {
     const user = await User.findByPk(req.params.id, {
       attributes: [
@@ -66,38 +120,6 @@ router.get("/:id", auth.required, async (req, res) => {
     res.json(user);
   } catch (err) {
     console.error("Ошибка получения пользователя:", err);
-    res.status(500).json({ message: "Ошибка сервера" });
-  }
-});
-
-router.get("/:id/templates", auth.required, async (req, res) => {
-  try {
-    const templates = await Template.findAll({
-      where: { userId: req.params.id },
-      order: [["createdAt", "DESC"]],
-    });
-    res.json(templates);
-  } catch (err) {
-    console.error("Ошибка получения шаблонов:", err);
-    res.status(500).json({ message: "Ошибка сервера" });
-  }
-});
-
-router.get("/:id/forms", auth.required, async (req, res) => {
-  try {
-    const forms = await Form.findAll({
-      where: { userId: req.params.id },
-      include: [
-        {
-          model: Template,
-          attributes: ["id", "title"],
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
-    res.json(forms);
-  } catch (err) {
-    console.error("Ошибка получения форм:", err);
     res.status(500).json({ message: "Ошибка сервера" });
   }
 });
