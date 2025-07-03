@@ -3,6 +3,7 @@ const router = express.Router();
 const { validate: isUuid } = require("uuid");
 const auth = require("../middleware/authMiddleware");
 const checkOwner = require("../middleware/checkOwnership");
+const { Op } = require("sequelize");
 
 const Template = require("../models/Template");
 const Question = require("../models/Question");
@@ -63,7 +64,9 @@ router.post("/", auth.required, async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const { limit, tag } = req.query;
+
     const queryOptions = {
+      where: {}, // ← Задаём заранее
       include: [
         { model: User, attributes: ["username"] },
         {
@@ -73,14 +76,14 @@ router.get("/", async (req, res) => {
       ],
       order: [["createdAt", "DESC"]],
     };
+
     if (limit && !isNaN(limit)) {
       queryOptions.limit = Math.min(parseInt(limit), 100);
     }
+
     if (tag) {
-      queryOptions.where = {
-        tags: {
-          [Op.contains]: [tag],
-        },
+      queryOptions.where.tags = {
+        [Op.contains]: [tag],
       };
     }
 
