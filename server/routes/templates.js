@@ -1,12 +1,14 @@
 const express = require("express");
 const router = express.Router();
+const { validate: isUuid } = require("uuid");
 const auth = require("../middleware/authMiddleware");
+const checkOwner = require("../middleware/checkOwnership");
+
 const Template = require("../models/Template");
 const Question = require("../models/Question");
-const User = require("../models/User");
 const Form = require("../models/Form");
-const checkOwner = require("../middleware/checkOwnership");
-// 🔐 Создать шаблон (только авторизованные)
+const User = require("../models/User");
+
 router.post("/", auth.required, async (req, res) => {
   const { title, description, category, imageUrl, tags, questions } = req.body;
 
@@ -16,20 +18,21 @@ router.post("/", auth.required, async (req, res) => {
       .json({ message: "Нужно указать title и массив questions" });
   }
 
-  const typeCount = { text: 0, textarea: 0, number: 0, checkbox: 0 };
+  const typeLimit = { text: 0, textarea: 0, number: 0, checkbox: 0 };
   for (let q of questions) {
     if (!q.type || !q.text) {
       return res
         .status(400)
         .json({ message: "Каждый вопрос должен иметь текст и тип" });
     }
-    if (typeCount[q.type] !== undefined) typeCount[q.type]++;
+    if (typeLimit[q.type] !== undefined) typeLimit[q.type]++;
   }
-  for (let t in typeCount) {
-    if (typeCount[t] > 4) {
+
+  for (let type in typeLimit) {
+    if (typeLimit[type] > 4) {
       return res
         .status(400)
-        .json({ message: `Максимум 4 вопроса типа "${t}"` });
+        .json({ message: `Максимум 4 вопроса типа "${type}"` });
     }
   }
 
@@ -43,14 +46,13 @@ router.post("/", auth.required, async (req, res) => {
       userId: req.user.id,
     });
 
-    const enrichedQuestions = questions.map((q, i) => ({
+    const enriched = questions.map((q, i) => ({
       ...q,
       order: i,
       templateId: template.id,
     }));
 
-    await Question.bulkCreate(enrichedQuestions);
-
+    await Question.bulkCreate(enriched);
     res.status(201).json({ templateId: template.id });
   } catch (err) {
     console.error("Ошибка при создании шаблона:", err);
@@ -58,7 +60,6 @@ router.post("/", auth.required, async (req, res) => {
   }
 });
 
-// 🔓 Получить все шаблоны
 router.get("/", async (req, res) => {
   try {
     const { limit } = req.query;
@@ -72,17 +73,11 @@ router.get("/", async (req, res) => {
       ],
       order: [["createdAt", "DESC"]],
     };
-    if (limit) queryOptions.limit = parseInt(limit);
-    const templates = await Template.findAll({
-      include: [
-        { model: User, attributes: ["username"] },
-        {
-          model: Question,
-          attributes: ["id", "text", "type", "options", "order"],
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
+    if (limit && !isNaN(limit)) {
+      queryOptions.limit = Math.min(parseInt(limit), 100);
+    }
+
+    const templates = await Template.findAll(queryOptions);
     res.json(templates);
   } catch (err) {
     console.error("Ошибка при получении шаблонов:", err);
@@ -92,10 +87,7 @@ router.get("/", async (req, res) => {
 
 router.get("/top", async (req, res) => {
   try {
-    // Получаем все шаблоны + сколько форм у каждого
-    const templates = await Template.findAll({
-      include: [{ model: Form, attributes: ["id"] }],
-    });
+    const templates = await Template.findAll({ include: [Form] });
 
     const top = templates
       .map((tpl) => ({
@@ -112,12 +104,19 @@ router.get("/top", async (req, res) => {
     res.status(500).json({ message: "Ошибка получения популярных шаблонов" });
   }
 });
-// 🔓 Получить один шаблон по ID
+
 router.get("/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!isUuid(id)) {
+    return res
+      .status(400)
+      .json({ message: "Некорректный идентификатор шаблона" });
+  }
+
   try {
-    const template = await Template.findByPk(req.params.id, {
+    const template = await Template.findByPk(id, {
       include: [
-        { model: User, attributes: ["username", "id"] },
+        { model: User, attributes: ["id", "username"] },
         {
           model: Question,
           attributes: ["id", "text", "type", "options", "order"],
@@ -140,29 +139,27 @@ router.get("/:id", async (req, res) => {
 router.put("/:id", auth.required, checkOwner(Template), async (req, res) => {
   try {
     const { title, questions = [] } = req.body;
-
-    // 1. Найдём шаблон
     const template = await Template.findByPk(req.params.id, {
       include: [Question],
     });
 
     if (!template) return res.status(404).json({ message: "Шаблон не найден" });
 
-    // 2. Обновим поля шаблона
     await template.update({ title });
 
-    // 3. Обновим список вопросов
     const existingIds = template.Questions.map((q) => q.id);
+    const newIds = questions.filter((q) => q.id).map((q) => q.id);
+    const toDelete = existingIds.filter((id) => !newIds.includes(id));
+
+    await Question.destroy({ where: { id: toDelete } });
 
     for (const q of questions) {
       if (q.id && existingIds.includes(q.id)) {
-        // обновляем существующий
         await Question.update(
           { text: q.text, type: q.type },
           { where: { id: q.id } }
         );
       } else {
-        // создаём новый
         await Question.create({
           text: q.text,
           type: q.type,
@@ -171,25 +168,19 @@ router.put("/:id", auth.required, checkOwner(Template), async (req, res) => {
       }
     }
 
-    // 4. Удалим удалённые вопросы
-    const newIds = questions.filter((q) => q.id).map((q) => q.id);
-    const toDelete = existingIds.filter((id) => !newIds.includes(id));
-
-    await Question.destroy({ where: { id: toDelete } });
-
     res.json({ message: "Шаблон обновлён" });
   } catch (err) {
     console.error("Ошибка при обновлении шаблона:", err);
-    res.status(500).json({ message: "Ошибка при обновлении" });
+    res.status(500).json({ message: "Ошибка при обновлении шаблона" });
   }
 });
+
 router.delete("/:id", auth.required, checkOwner(Template), async (req, res) => {
   try {
-    // await Form.destroy({ where: { templateId: req.params.id } }); // Удаляем формы, связанные с этим шаблоном
     await Template.destroy({ where: { id: req.params.id } });
     res.json({ message: "Шаблон удалён" });
   } catch (err) {
-    console.error("Ошибка удаления:", err);
+    console.error("Ошибка удаления шаблона:", err);
     res.status(500).json({ message: "Ошибка на сервере" });
   }
 });
@@ -199,33 +190,25 @@ router.patch(
   auth.required,
   checkOwner(Template),
   async (req, res) => {
+    const { questions } = req.body;
+
+    if (!Array.isArray(questions)) {
+      return res.status(400).json({ message: "Некорректный формат вопросов" });
+    }
+
     try {
-      const { questions } = req.body;
-
-      if (!Array.isArray(questions))
-        return res
-          .status(400)
-          .json({ message: "Некорректный формат вопросов" });
-
       const templateId = req.params.id;
-
-      // Получаем существующие вопросы
       const existing = await Question.findAll({ where: { templateId } });
       const existingIds = existing.map((q) => q.id);
-
-      // ID из новых данных
       const incomingIds = questions.filter((q) => q.id).map((q) => q.id);
-
-      // ❌ Вопросы на удаление
       const toDelete = existingIds.filter((id) => !incomingIds.includes(id));
+
       if (toDelete.length > 0) {
         await Question.destroy({ where: { id: toDelete } });
       }
 
-      // 🔁 Обновим или создадим
       for (const [i, q] of questions.entries()) {
         if (q.id && existingIds.includes(q.id)) {
-          // UPDATE
           await Question.update(
             {
               text: q.text,
@@ -236,7 +219,6 @@ router.patch(
             { where: { id: q.id } }
           );
         } else {
-          // CREATE
           await Question.create({
             text: q.text,
             type: q.type,

@@ -7,13 +7,11 @@ const auth = require("../middleware/authMiddleware");
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
-// 🔐 Генерация JWT токена
 const generateToken = (user) =>
   jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, {
     expiresIn: "7d",
   });
 
-// ✅ Регистрация
 router.post("/register", async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -47,7 +45,6 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// ✅ Вход
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -77,7 +74,6 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ✅ Получить данные текущего пользователя
 router.get("/me", auth.required, (req, res) => {
   const { id, username, email, role, preferred_lang, theme } = req.user;
   res.json({ id, username, email, role, preferred_lang, theme });

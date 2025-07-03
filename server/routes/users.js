@@ -9,45 +9,6 @@ const Question = require("../models/Question");
 const User = require("../models/User");
 const checkOwnership = require("../middleware/checkOwnership");
 
-// 🔐 Мои шаблоны
-// router.get("/me/templates", auth.required, async (req, res) => {
-//   try {
-//     const templates = await Template.findAll({
-//       where: { userId: req.user.id },
-//       order: [["createdAt", "DESC"]],
-//     });
-//     res.json(templates);
-//   } catch (err) {
-//     console.error("Ошибка получения шаблонов пользователя:", err);
-//     res.status(500).json({ message: "Ошибка на сервере" });
-//   }
-// });
-
-// // 🔐 Мои формы (и ответы)
-// router.get("/me/forms", auth.required, async (req, res) => {
-//   try {
-//     const forms = await Form.findAll({
-//       where: { userId: req.user.id },
-//       include: [
-//         {
-//           model: Answer,
-//           attributes: ["id", "questionId", "value"],
-//           include: [{ model: Question, attributes: ["text", "type"] }],
-//         },
-//         {
-//           model: TemplateModel,
-//           attributes: ["id", "title"],
-//         },
-//       ],
-//       order: [["createdAt", "DESC"]],
-//     });
-//     res.json(forms);
-//   } catch (err) {
-//     console.error("Ошибка получения форм пользователя:", err);
-//     res.status(500).json({ message: "Ошибка на сервере" });
-//   }
-// });
-
 router.get(
   "/:id/templates",
   auth.required,

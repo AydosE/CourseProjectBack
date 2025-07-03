@@ -6,6 +6,7 @@ const Question = require("../models/Question");
 const Template = require("../models/Template");
 const auth = require("../middleware/authMiddleware");
 const canViewForm = require("../middleware/canViewForm");
+const { validate: isUuid } = require("uuid");
 
 router.post("/", auth.required, async (req, res) => {
   try {
@@ -48,57 +49,55 @@ router.post("/", auth.required, async (req, res) => {
   }
 });
 
-router.get("/:id", auth.required, async (req, res) => {
+router.get("/:id", auth.required, canViewForm, async (req, res) => {
+  const { id } = req.params;
+  if (!isUuid(id)) {
+    return res
+      .status(400)
+      .json({ message: "Некорректный идентификатор формы" });
+  }
+
   try {
-    const form = await Form.findByPk(req.params.id, {
+    const form = await Form.findByPk(id, {
       include: [
         {
           model: Answer,
-          include: [{ model: Question, attributes: ["text", "type"] }],
           attributes: ["id", "questionId", "value"],
+          include: [{ model: Question, attributes: ["text", "type"] }],
         },
         {
           model: Template,
-          include: [
-            {
-              model: Question,
-              attributes: ["id", "text", "type"],
-            },
-          ],
+          include: [{ model: Question, attributes: ["id", "text", "type"] }],
         },
       ],
     });
 
     if (!form) return res.status(404).json({ message: "Форма не найдена" });
-    const isOwner = form.userId === req.user.id;
-    const isAdmin = req.user.role === "admin";
-
-    if (!isOwner && !isAdmin) {
-      return res.status(403).json({ message: "Нет доступа к форме" });
-    }
 
     res.json(form);
   } catch (err) {
-    console.error("Ошибка получения формы", err);
-    res.status(500).json({ message: "Ошибка на сервере" });
+    console.error("Ошибка получения формы:", err);
+    res.status(500).json({ message: "Ошибка сервера", error: err.message });
   }
 });
 
-router.delete("/:id", auth.required, async (req, res) => {
-  try {
-    const form = await Form.findByPk(req.params.id);
-    if (!form) return res.status(404).json({ message: "Форма не найдена" });
+router.delete("/:id", auth.required, canViewForm, async (req, res) => {
+  const { id } = req.params;
+  if (!isUuid(id)) {
+    return res
+      .status(400)
+      .json({ message: "Некорректный идентификатор формы" });
+  }
 
-    // Проверка на владельца или админа
-    if (form.userId !== req.user.id && req.user.role !== "admin") {
-      return res.status(403).json({ message: "Нет доступа" });
-    }
+  try {
+    const form = await Form.findByPk(id);
+    if (!form) return res.status(404).json({ message: "Форма не найдена" });
 
     await form.destroy();
     res.json({ message: "Ответ удалён" });
   } catch (err) {
     console.error("Ошибка удаления формы:", err);
-    res.status(500).json({ message: "Ошибка сервера" });
+    res.status(500).json({ message: "Ошибка сервера", error: err.message });
   }
 });
 

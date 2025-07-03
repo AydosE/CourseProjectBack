@@ -5,7 +5,6 @@ const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
 const auth = {};
 
-// 🔓 Необязательная авторизация (req.user может быть null)
 auth.optional = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -40,11 +39,10 @@ auth.optional = async (req, res, next) => {
     next();
   } catch (err) {
     req.user = null;
-    return next(); // молча продолжаем как гость
+    return next();
   }
 };
 
-// 🔐 Обязательная авторизация
 auth.required = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;

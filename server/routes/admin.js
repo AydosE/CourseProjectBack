@@ -3,7 +3,6 @@ const router = express.Router();
 const auth = require("../middleware/authMiddleware");
 const User = require("../models/User");
 
-// ✅ Middleware: только для админов
 function isAdmin(req, res, next) {
   if (req.user?.role !== "admin") {
     return res.status(403).json({ message: "Только для администраторов" });
@@ -24,7 +23,6 @@ router.get("/users", auth.required, isAdmin, async (req, res) => {
   }
 });
 
-// 🔒 Блокировка / разблокировка пользователя
 router.put("/:id/block", auth.required, isAdmin, async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
@@ -39,7 +37,6 @@ router.put("/:id/block", auth.required, isAdmin, async (req, res) => {
   }
 });
 
-// 🏅 Назначить/снять роль администратора
 router.put("/:id/toggle-admin", auth.required, isAdmin, async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
@@ -54,7 +51,6 @@ router.put("/:id/toggle-admin", auth.required, isAdmin, async (req, res) => {
   }
 });
 
-// 🗑 Удаление пользователя
 router.delete("/:id", auth.required, isAdmin, async (req, res) => {
   try {
     const count = await User.destroy({ where: { id: req.params.id } });

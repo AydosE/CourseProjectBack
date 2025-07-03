@@ -3,7 +3,6 @@ const Answer = require("../models/Answer");
 
 const router = express.Router();
 
-// Получить ответы для формы
 router.get("/:formId", async (req, res) => {
   const answers = await Answer.findAll({
     where: { formId: req.params.formId },
@@ -11,7 +10,6 @@ router.get("/:formId", async (req, res) => {
   res.json(answers);
 });
 
-// Сохранить новый ответ
 router.post("/:formId", async (req, res) => {
   const { question, answer } = req.body;
   if (!question || !answer)

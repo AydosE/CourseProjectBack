@@ -6,7 +6,6 @@ router.get("/", async (req, res) => {
   try {
     const templates = await Template.findAll({ attributes: ["tags"] });
 
-    // Сбор всех тегов в один массив
     const allTags = templates.flatMap((tpl) => tpl.tags || []);
     const unique = [...new Set(allTags)];
 
