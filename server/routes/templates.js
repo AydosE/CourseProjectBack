@@ -62,7 +62,7 @@ router.post("/", auth.required, async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const { limit } = req.query;
+    const { limit, tag } = req.query;
     const queryOptions = {
       include: [
         { model: User, attributes: ["username"] },
@@ -75,6 +75,13 @@ router.get("/", async (req, res) => {
     };
     if (limit && !isNaN(limit)) {
       queryOptions.limit = Math.min(parseInt(limit), 100);
+    }
+    if (tag) {
+      queryOptions.where = {
+        tags: {
+          [Op.contains]: [tag],
+        },
+      };
     }
 
     const templates = await Template.findAll(queryOptions);
