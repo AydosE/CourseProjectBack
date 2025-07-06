@@ -10,12 +10,29 @@ const { validate: isUuid } = require("uuid");
 
 router.post("/", auth.required, async (req, res) => {
   try {
-    const { templateId, answers } = req.body;
+    const { templateId, templateVersion, answers } = req.body;
     const userId = req.user?.id;
+
     if (!userId) return res.status(401).json({ message: "Нет пользователя" });
 
-    if (!templateId || !Array.isArray(answers) || answers.length === 0) {
+    if (
+      !templateId ||
+      !templateVersion ||
+      !Array.isArray(answers) ||
+      answers.length === 0
+    ) {
       return res.status(400).json({ message: "Неверные данные формы" });
+    }
+
+    const template = await Template.findByPk(templateId);
+    if (!template) {
+      return res.status(404).json({ message: "Шаблон не найден" });
+    }
+
+    if (template.version !== templateVersion) {
+      return res.status(409).json({
+        message: "Шаблон был обновлён. Пожалуйста, начните заново.",
+      });
     }
 
     const questions = await Question.findAll({ where: { templateId } });
@@ -38,9 +55,8 @@ router.post("/", auth.required, async (req, res) => {
       questionId: a.questionId,
       value: a.value,
     }));
-    const createdAnswers = await Answer.bulkCreate(formattedAnswers, {
-      returning: true,
-    });
+
+    await Answer.bulkCreate(formattedAnswers, { returning: true });
 
     res.status(201).json({ message: "Ответ отправлен", formId: form.id });
   } catch (err) {

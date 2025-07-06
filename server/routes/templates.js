@@ -148,12 +148,17 @@ router.get("/:id", async (req, res) => {
 
 router.put("/:id", auth.required, checkOwner(Template), async (req, res) => {
   try {
-    const { title, questions = [] } = req.body;
+    const { title, questions = [], version: clientVersion, ...rest } = req.body;
     const template = await Template.findByPk(req.params.id, {
       include: [Question],
     });
 
     if (!template) return res.status(404).json({ message: "Шаблон не найден" });
+    if (template.version !== clientVersion) {
+      return res.status(409).json({
+        message: "Шаблон был изменён другим пользователем. Обновите данные.",
+      });
+    }
 
     await template.update({ title });
 
