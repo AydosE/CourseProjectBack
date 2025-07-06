@@ -20,6 +20,7 @@ const Template = sequelize.define(
     version: {
       type: DataTypes.UUID,
       allowNull: false,
+      defaultValue: crypto.randomUUID(),
     },
   },
   {
