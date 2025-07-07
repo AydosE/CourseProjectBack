@@ -12,11 +12,39 @@ function isAdmin(req, res, next) {
 
 router.get("/users", auth.required, isAdmin, async (req, res) => {
   try {
-    const users = await User.findAll({
+    const {
+      limit = 20,
+      page = 1,
+      search = "",
+      sortBy = "username",
+      order = "ASC",
+    } = req.query;
+
+    const parsedLimit = Math.min(parseInt(limit), 100);
+    const offset = (parseInt(page) - 1) * parsedLimit;
+
+    const where = {};
+    if (search) {
+      where[Op.or] = [
+        { username: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } },
+      ];
+    }
+
+    const { count, rows } = await User.findAndCountAll({
+      where,
       attributes: ["id", "username", "email", "role", "is_blocked"],
-      order: [["createdAt", "DESC"]],
+      order: [[sortBy, order.toUpperCase()]],
+      limit: parsedLimit,
+      offset,
     });
-    res.json(users);
+
+    res.json({
+      users: rows,
+      total: count,
+      totalPages: Math.ceil(count / parsedLimit),
+      currentPage: parseInt(page),
+    });
   } catch (err) {
     console.error("Ошибка получения пользователей:", err);
     res.status(500).json({ message: "Ошибка сервера" });

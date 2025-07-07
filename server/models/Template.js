@@ -22,6 +22,11 @@ const Template = sequelize.define(
       allowNull: false,
       defaultValue: crypto.randomUUID(),
     },
+    isPublic: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
   },
   {
     freezeTableName: true,

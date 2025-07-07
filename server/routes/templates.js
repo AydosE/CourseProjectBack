@@ -11,7 +11,15 @@ const Form = require("../models/Form");
 const User = require("../models/User");
 
 router.post("/", auth.required, async (req, res) => {
-  const { title, description, category, imageUrl, tags, questions } = req.body;
+  const {
+    title,
+    description,
+    category,
+    imageUrl,
+    tags,
+    questions,
+    isPublic = true,
+  } = req.body;
 
   if (!title || !Array.isArray(questions)) {
     return res
@@ -45,6 +53,7 @@ router.post("/", auth.required, async (req, res) => {
       imageUrl,
       tags,
       userId: req.user.id,
+      isPublic,
     });
 
     const enriched = questions.map((q, i) => ({
@@ -61,12 +70,53 @@ router.post("/", auth.required, async (req, res) => {
   }
 });
 
-router.get("/", async (req, res) => {
+router.get("/", auth.optional, async (req, res) => {
   try {
-    const { limit, tag } = req.query;
+    const {
+      limit,
+      tag,
+      adminView,
+      page = 1,
+      category,
+      search,
+      sortBy = "createdAt",
+      order = "DESC",
+    } = req.query;
 
-    const queryOptions = {
-      where: {}, // ← Задаём заранее
+    const userId = req.user?.id;
+    const isAdmin = req.user?.role === "admin";
+    const isAdminView = isAdmin && adminView === "true";
+
+    const where = {};
+    if (!isAdminView) {
+      if (userId) {
+        where[Op.or] = [{ isPublic: true }, { userId }];
+      } else {
+        where.isPublic = true;
+      }
+    }
+
+    if (tag) {
+      where.tags = {
+        [Op.contains]: [tag],
+      };
+    }
+    if (category) {
+      where.category = category;
+    }
+    if (search) {
+      where.title = { [Op.iLike]: `%${search}%` };
+    }
+
+    const parsedLimit = Math.min(
+      Number.isNaN(Number(limit)) ? 20 : Number(limit),
+      100
+    );
+
+    const offset = (parseInt(page) - 1) * parsedLimit;
+
+    const { count, rows } = await Template.findAndCountAll({
+      where,
       include: [
         { model: User, attributes: ["username"] },
         {
@@ -74,21 +124,19 @@ router.get("/", async (req, res) => {
           attributes: ["id", "text", "type", "options", "order"],
         },
       ],
-      order: [["createdAt", "DESC"]],
-    };
+      order: [[sortBy, order.toUpperCase()]],
+      limit: parsedLimit,
+      offset,
+      distinct: true,
+    });
+    console.log({ count, parsedLimit });
 
-    if (limit && !isNaN(limit)) {
-      queryOptions.limit = Math.min(parseInt(limit), 100);
-    }
-
-    if (tag) {
-      queryOptions.where.tags = {
-        [Op.contains]: [tag],
-      };
-    }
-
-    const templates = await Template.findAll(queryOptions);
-    res.json(templates);
+    res.json({
+      templates: rows,
+      total: count,
+      totalPages: Math.ceil(count / parsedLimit),
+      currentPage: parseInt(page),
+    });
   } catch (err) {
     console.error("Ошибка при получении шаблонов:", err);
     res.status(500).json({ message: "Ошибка при получении шаблонов" });
@@ -97,7 +145,10 @@ router.get("/", async (req, res) => {
 
 router.get("/top", async (req, res) => {
   try {
-    const templates = await Template.findAll({ include: [Form] });
+    const templates = await Template.findAll({
+      where: { isPublic: true },
+      include: [Form],
+    });
 
     const top = templates
       .map((tpl) => ({
