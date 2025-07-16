@@ -10,7 +10,7 @@ const authRouter = require("./routes/auth");
 const tagRoutes = require("./routes/tags");
 const userRoutes = require("./routes/users");
 const adminRoutes = require("./routes/admin");
-
+const ticketsRouter = require("./routes/tickets");
 require("dotenv").config();
 
 const app = express();
@@ -37,6 +37,7 @@ app.use("/api/forms", formsRouter);
 app.use("/api/tags", tagRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/tickets", ticketsRouter);
 sequelize
   // .sync({ force: true })
   .sync()
